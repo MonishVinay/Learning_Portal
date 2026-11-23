@@ -1,0 +1,232 @@
+generator client {
+  provider = "prisma-client-js"
+}
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+enum Role {
+  TEACHER
+  STUDENT
+}
+enum SubmissionStatus {
+  SUBMITTED
+  CORRECTIONS
+  APPROVED
+  GRADED
+}
+enum Recurrence {
+  NONE
+  DAILY
+  WEEKLY
+}
+enum FilePurpose {
+  ASSIGNMENT
+  SUBMISSION
+  REPORT
+}
+model User {
+  id                 String   @id @default(cuid())
+  username           String   @unique
+  name               String
+  passwordHash       String
+  role               Role
+  mustChangePassword Boolean  @default(true)
+  active             Boolean  @default(true)
+  timezone           String   @default("Asia/Kolkata")
+  streaksEnabled     Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  sessions           Session[]
+  authored           Assignment[] @relation("Author")
+  assigned           AssignmentStudent[]
+  submissions        Submission[]
+  files              FileAsset[]
+  exams              Exam[]
+  briefs             Brief[]
+  doubts             Doubt[]
+  replies            DoubtReply[]
+  mistakes           Mistake[]
+  notifications      Notification[]
+  focusSessions      FocusSession[]
+}
+model Session {
+  id        String   @id
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId])
+  @@index([expiresAt])
+}
+model LoginBucket {
+  id        String   @id
+  attempts  Int      @default(1)
+  resetsAt  DateTime
+}
+model Assignment {
+  id          String   @id @default(cuid())
+  title       String
+  description String   @db.Text
+  subject     String
+  priority    String   @default("MEDIUM")
+  dueAt       DateTime
+  releaseAt   DateTime
+  recurrence  Recurrence @default(NONE)
+  isTemplate  Boolean  @default(false)
+  authorId    String
+  author      User     @relation("Author", fields: [authorId], references: [id])
+  parentId    String?
+  occurrenceAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  students    AssignmentStudent[]
+  submissions Submission[]
+  files       FileAsset[]
+  doubts      Doubt[]
+  @@unique([parentId, occurrenceAt])
+  @@index([releaseAt, dueAt])
+}
+model AssignmentStudent {
+  assignmentId String
+  studentId    String
+  assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  student      User       @relation(fields: [studentId], references: [id])
+  @@id([assignmentId, studentId])
+  @@index([studentId])
+}
+model Submission {
+  id             String @id @default(cuid())
+  assignmentId   String
+  studentId      String
+  version        Int
+  idempotencyKey String
+  note           String @default("") @db.Text
+  status         SubmissionStatus @default(SUBMITTED)
+  score          Float?
+  maxScore       Float?
+  feedback       String @default("") @db.Text
+  reviewedAt     DateTime?
+  createdAt      DateTime @default(now())
+  assignment     Assignment @relation(fields: [assignmentId], references: [id])
+  student        User @relation(fields: [studentId], references: [id])
+  files          FileAsset[]
+  @@unique([assignmentId, studentId, version])
+  @@unique([studentId, idempotencyKey])
+  @@index([createdAt])
+}
+model FileAsset {
+  id           String @id @default(cuid())
+  objectKey    String
+  name         String
+  mime         String
+  size         Int
+  purpose      FilePurpose
+  ready        Boolean @default(false)
+  ownerId      String
+  assignmentId String?
+  submissionId String?
+  examId       String?
+  createdAt    DateTime @default(now())
+  owner        User @relation(fields: [ownerId], references: [id])
+  assignment   Assignment? @relation(fields: [assignmentId], references: [id])
+  submission   Submission? @relation(fields: [submissionId], references: [id])
+  exam         Exam? @relation(fields: [examId], references: [id])
+  @@index([ownerId, ready])
+  @@index([objectKey])
+}
+model Exam {
+  id          String @id @default(cuid())
+  studentId   String
+  title       String
+  date        DateTime
+  remarks     String @default("") @db.Text
+  published   Boolean @default(false)
+  createdAt   DateTime @default(now())
+  student     User @relation(fields: [studentId], references: [id])
+  subjects    ExamSubject[]
+  files       FileAsset[]
+  @@index([studentId, published, date])
+}
+model ExamSubject {
+  id         String @id @default(cuid())
+  examId     String
+  name       String
+  marks      Float
+  maxMarks   Float
+  weakTopics String @default("") @db.Text
+  exam       Exam @relation(fields: [examId], references: [id], onDelete: Cascade)
+}
+model Brief {
+  id              String @id @default(cuid())
+  studentId       String
+  date            String
+  goals           Json
+  priorities      String @default("")
+  estimatedMinutes Int
+  doubts          String @default("") @db.Text
+  afternoonAt     DateTime @default(now())
+  outcomes        Json?
+  unfinishedReason String @default("") @db.Text
+  actualMinutes   Int?
+  reflection      String @default("") @db.Text
+  eveningAt       DateTime?
+  teacherComment  String @default("") @db.Text
+  student         User @relation(fields: [studentId], references: [id])
+  @@unique([studentId, date])
+  @@index([date])
+}
+model Doubt {
+  id           String @id @default(cuid())
+  assignmentId String
+  studentId    String
+  message      String @db.Text
+  resolved     Boolean @default(false)
+  createdAt    DateTime @default(now())
+  assignment   Assignment @relation(fields: [assignmentId], references: [id])
+  student      User @relation(fields: [studentId], references: [id])
+  replies      DoubtReply[]
+}
+model DoubtReply {
+  id        String @id @default(cuid())
+  doubtId   String
+  userId    String
+  message   String @db.Text
+  createdAt DateTime @default(now())
+  doubt     Doubt @relation(fields: [doubtId], references: [id])
+  user      User @relation(fields: [userId], references: [id])
+}
+model Mistake {
+  id           String @id @default(cuid())
+  studentId    String
+  subject      String
+  topic        String
+  description  String @db.Text
+  correction   String @default("") @db.Text
+  revisionAt   DateTime
+  mastered     Boolean @default(false)
+  revisionCount Int @default(0)
+  createdAt    DateTime @default(now())
+  student      User @relation(fields: [studentId], references: [id])
+  @@index([studentId, revisionAt])
+}
+model Notification {
+  id        String @id @default(cuid())
+  userId    String
+  title     String
+  message   String
+  href      String @default("/dashboard")
+  dedupeKey String? @unique
+  read      Boolean @default(false)
+  createdAt DateTime @default(now())
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, createdAt])
+}
+model FocusSession {
+  id             String @id @default(cuid())
+  userId         String
+  minutes        Int
+  idempotencyKey String
+  createdAt      DateTime @default(now())
+  user           User @relation(fields: [userId], references: [id])
+  @@unique([userId, idempotencyKey])
+}

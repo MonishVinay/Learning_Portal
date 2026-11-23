@@ -1,0 +1,11 @@
+import type { portalData } from './queries';
+import type { publicUser } from './auth';
+type Serialized<T> = T extends Date ? string : T extends Array<infer U> ? Serialized<U>[] : T extends object ? { [K in keyof T]: Serialized<T[K]> } : T;
+export type PortalData = Serialized<Awaited<ReturnType<typeof portalData>>>;
+export type PortalUser = Serialized<ReturnType<typeof publicUser>>;
+export type Assignment = PortalData['assignments'][number];
+export type Exam = PortalData['exams'][number];
+export type Brief = PortalData['briefs'][number];
+export type Asset = {id: string; name: string; size: number; mime: string};
+export type Goal = {id: string; text: string};
+export type Outcome = {goalId: string; status: 'COMPLETED' | 'PARTIAL' | 'UNFINISHED'};
