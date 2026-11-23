@@ -2,10 +2,9 @@ services:
   - type: web
     name: scholar-portal
     runtime: node
-    plan: starter
+    plan: free
     buildCommand: npm ci --include=dev && npm run build
-    preDeployCommand: npm run db:deploy
-    startCommand: npm run start:render
+    startCommand: npm run db:deploy && npm run start:render
     healthCheckPath: /api/health
     autoDeployTrigger: commit
     envVars:
@@ -23,14 +22,12 @@ services:
         sync: false
       - key: TEACHER_NAME
         value: Teacher
-      - key: R2_ACCOUNT_ID
+      - key: SUPABASE_URL
         sync: false
-      - key: R2_ACCESS_KEY_ID
+      - key: SUPABASE_SERVICE_ROLE_KEY
         sync: false
-      - key: R2_SECRET_ACCESS_KEY
-        sync: false
-      - key: R2_BUCKET
-        sync: false
+      - key: SUPABASE_STORAGE_BUCKET
+        value: learning-portal-files
       - key: MAX_UPLOAD_MB
         value: "20"
       - key: CRON_SECRET

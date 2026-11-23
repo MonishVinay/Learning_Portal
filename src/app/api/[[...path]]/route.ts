@@ -67,7 +67,7 @@ export const GET = handler(async (req, context) => {
     const archive = archiver('zip', {zlib: {level: 5}});
     archive.on('error', () => archive.destroy());
     const body = Readable.toWeb(archive) as ReadableStream<Uint8Array>;
-    // Stream R2 objects; no permanent or temporary file is written to the server disk.
+    // Stream private Supabase objects; no files are written to the server disk.
     void (async () => {
       try {
         archive.append(JSON.stringify({assignment: assignment.title, exportedAt: new Date(), versions: assignment.submissions.map(s => ({version: s.version, submittedAt: s.createdAt, status: s.status, score: s.score, maxScore: s.maxScore, feedback: s.feedback, note: s.note}))}, null, 2), {name: 'submission-history.json'});

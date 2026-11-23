@@ -12,13 +12,11 @@
     "test": "tsx --test tests/*.test.ts",
     "test:smoke": "node scripts/smoke.mjs",
     "db:migrate": "prisma migrate deploy",
-    "db:bootstrap": "tsx scripts/bootstrap.ts",
-    "db:deploy": "prisma migrate deploy && tsx scripts/bootstrap.ts",
+    "db:bootstrap": "tsx --env-file-if-exists=.env scripts/bootstrap.ts",
+    "db:deploy": "prisma migrate deploy && npm run db:bootstrap",
     "jobs": "tsx scripts/jobs.ts"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.922.0",
-    "@aws-sdk/s3-request-presigner": "^3.922.0",
     "@prisma/client": "6.19.0",
     "archiver": "^7.0.1",
     "bcryptjs": "^3.0.3",

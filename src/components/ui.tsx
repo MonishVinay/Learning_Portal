@@ -40,8 +40,14 @@ export function Uploads({ownerId, purpose, value, onChange, onBusy}: {ownerId: s
           pending = await api('uploads', {name: file.name, size: file.size, mime, purpose});
           sessionStorage.setItem(pendingKey, pending.id);
         }
-        const response = await fetch(pending.url, {method: 'PUT', headers: {'Content-Type': mime, 'If-None-Match': '*'}, body: file});
-        if (!response.ok && response.status !== 412) throw new Error('Upload was interrupted or storage rejected it. Select the file again to retry. Check the bucket CORS configuration if this continues.');
+        const response = await fetch(pending.url, {method: 'PUT', headers: {'Content-Type': mime, 'x-upsert': 'false'}, body: file});
+        // A retried PUT may report an existing object. Trust only server verification.
+        if (!response.ok) {
+          try {
+            const asset = await api<Asset>(`uploads/${pending.id}/complete`, {});
+            current.push(asset); onChange([...current]); sessionStorage.removeItem(pendingKey); continue;
+          } catch { throw new Error('Upload was interrupted or storage rejected it. Select the file again to retry. Check the private Supabase bucket settings if this continues.'); }
+        }
         const asset = await api<Asset>(`uploads/${pending.id}/complete`, {});
         current.push(asset); onChange([...current]); sessionStorage.removeItem(pendingKey);
       }
